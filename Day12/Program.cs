@@ -10,22 +10,22 @@
  * Result exercise 2: 439
  */
 
-Exercise.Solve(0,0);
-Console.WriteLine($"Total moves 1: {Exercise.MovesCount}\n");
+BFS.Solve(0,0);
+Console.WriteLine($"Total moves 1: {BFS.MovesCount}\n");
 
 int minCount = 0;
-for (int row = 0; row < Exercise.Map.Count; row++)
+for (int row = 0; row < BFS.Map.Count; row++)
 {
-    for (int col = 0; col < Exercise.Map[row].Length; col++)
+    for (int col = 0; col < BFS.Map[row].Length; col++)
     {
-        if (row == 0 || row == Exercise.Map.Count - 1 || col == 0 || col == Exercise.Map[row].Length - 1)
+        if (row == 0 || row == BFS.Map.Count - 1 || col == 0 || col == BFS.Map[row].Length - 1)
         {
-            if (Exercise.Map[row][col] == 'a')
+            if (BFS.Map[row][col] == 'a')
             {
-                if (Exercise.Solve(row, col))
+                if (BFS.Solve(row, col))
                 {
-                    if (minCount == 0 || Exercise.MovesCount < minCount)
-                        minCount = Exercise.MovesCount;
+                    if (minCount == 0 || BFS.MovesCount < minCount)
+                        minCount = BFS.MovesCount;
                 }
             }
         }
@@ -33,7 +33,7 @@ for (int row = 0; row < Exercise.Map.Count; row++)
 }
 Console.WriteLine($"Total moves 2: {minCount}\n");
 
-static class Exercise
+static class BFS
 {
     public static List<string> Map = new();
     public static int Rows = 0;
