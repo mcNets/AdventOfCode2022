@@ -1,47 +1,116 @@
 ﻿/*
+ * { = 123
+ * 
  * - What is the fewest steps required to move from your current position to the location that should get the best signal?
  * 
- * Result exercise 1: 
+ * Result exercise 1: 440
  * 
- * - 
+ * - What is the fewest steps required to move starting from any square with elevation a to the location that should get the best signal?
  * 
- * Result exercise 2: 
+ * Result exercise 2: 439
  */
 
-using System.Collections.Immutable;
-using System.ComponentModel;
-using System.Drawing;
-using System.Numerics;
+Exercise.Solve(0,0);
+Console.WriteLine($"Total moves 1: {Exercise.MovesCount}\n");
 
-Console.WriteLine("Advent of Code - Day 12\n");
-
-Exercise.GetData();
-Exercise.Solve();
+int minCount = 0;
+for (int row = 0; row < Exercise.Map.Count; row++)
+{
+    for (int col = 0; col < Exercise.Map[row].Length; col++)
+    {
+        if (row == 0 || row == Exercise.Map.Count - 1 || col == 0 || col == Exercise.Map[row].Length - 1)
+        {
+            if (Exercise.Map[row][col] == 'a')
+            {
+                if (Exercise.Solve(row, col))
+                {
+                    if (minCount == 0 || Exercise.MovesCount < minCount)
+                        minCount = Exercise.MovesCount;
+                }
+            }
+        }
+    }
+}
+Console.WriteLine($"Total moves 2: {minCount}\n");
 
 static class Exercise
 {
-    public static List<string> Orders = new();
-    
-    public static int Rows;
-    public static int Columns;
-    public static Queue<int> RQueue = new Queue<int>();
-    public static Queue<int> CQueue = new Queue<int>(); 
-    public static int StartingRow = 0;
-    public static int StartingCol = 0;
-    public static int MoveCount = 0;
+    public static List<string> Map = new();
+    public static int Rows = 0;
+    public static int Cols = 0;
+    public static bool[,] Visited;
+    public static int MovesCount = 0;
+    public static Queue<(int r, int c)> Q = new Queue<(int r, int c)>();
+    public static int NodesLeftInLayer = 0;
+    public static int NodesInNextLayer = 0;
+    public static int[] DeltaRow = { -1, +1, 0, 0 };
+    public static int[] DeltaCol = { 0, 0, +1, -1 };
 
     public static void GetData()
     {
-        Orders = File.ReadAllLines(@"..\..\..\data0.txt").ToList();
-        Rows = Orders.Count;
-        Columns = Orders[0].Length;
-        Console.WriteLine($"Rows:{Rows}  Columns:{Columns}");
+        if (Map.Count== 0)
+        {
+            Map = File.ReadAllLines(@"..\..\..\data.txt").ToList();
+        }
     }
 
-    public static void Solve()
+    public static bool Solve(int startingRow, int startingCol)
     {
-        RQueue.Append( StartingRow );
-        CQueue.Append( StartingCol );
+        GetData();
 
+        Q.Clear();
+        Rows = Map.Count;
+        Cols = Map[0].Length;
+        Visited = new bool[Rows, Cols];
+        Q.Enqueue((startingRow, startingCol));
+        Visited[startingRow, startingCol] = true;
+        NodesLeftInLayer = 1;
+        NodesInNextLayer = 0;
+        MovesCount = 0;
+
+        while (Q.Count > 0)
+        {
+            (int row, int col) = Q.Dequeue();
+
+            // Solved
+            if (Map[row][col] == 'E')
+            {
+                return true;
+            }
+
+            GetNeighbours(row, col);
+
+            NodesLeftInLayer--;
+
+            if (NodesLeftInLayer == 0)
+            {
+                NodesLeftInLayer = NodesInNextLayer;
+                NodesInNextLayer = 0;
+                MovesCount++;
+            }
+        }
+
+        return false;
+    }
+
+    public static void GetNeighbours(int row, int col)
+    {
+        for (int x = 0; x < 4; x++)
+        {
+            int r = row + DeltaRow[x];
+            int c = col + DeltaCol[x];
+
+            if (r < 0 || r >= Rows || c < 0 || c >= Cols || Visited[r, c]) continue;
+
+            // Constraints:
+            // - Destination square can be at most one higher than the current.
+            // - 'E' can only be selected if the previous one is a 'z' => '{' = 'z' + 1
+            char newItem = Map[r][c] == 'E' ? '{' : Map[r][c];
+            if (newItem - Map[row][col] > 1) continue;
+
+            Visited[r, c] = true;
+            Q.Enqueue((r, c));
+            NodesInNextLayer++;
+        }
     }
 }

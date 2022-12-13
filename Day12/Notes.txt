@@ -1,0 +1,186 @@
+﻿using System.Collections.Immutable;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Drawing;
+using System.Numerics;
+
+Console.WriteLine("Advent of Code - Day 12\n");
+
+Exercise.GetData();
+Exercise.Solve();
+
+static class Exercise
+{
+    public static List<string> Orders = new();
+    
+    public static int Rows;
+    public static int Cols;
+    public static Queue<(int x, int y)> RQueue = new Queue<(int x, int y)>();
+    //public static Queue<int> CQueue = new Queue<int>(); 
+    public static int StartRow = 0;
+    public static int StartCol = 0;
+    public static int MovesCount = 0;
+    public static bool[,] Visited;
+    public static int [] DeltaRow = { -1, +1, 0, 0 };
+    public static int [] DeltaCol = { 0, 0, +1, -1 };
+    public static int NodesLeftInLayer = 0;
+    public static int NodesInNextLayer = 0;
+
+    public static void GetData()
+    {
+        Orders = File.ReadAllLines(@"..\..\..\data.txt").ToList();
+        Rows = Orders.Count;
+        Cols = Orders[0].Length;
+        Visited = new bool[Rows, Cols]; 
+        Console.WriteLine($"Rows:{Rows}  Columns:{Cols}");
+    }
+
+    public static void Solve()
+    {
+        bool Solved = false;
+
+        RQueue.Enqueue((StartRow, StartRow));
+        //CQueue.Enqueue( StartCol );
+        Visited[StartRow, StartCol] = true;
+        NodesLeftInLayer = 1;
+        NodesInNextLayer = 0;
+        
+        while (RQueue.Count > 0)
+        {
+            (int row, int col) = RQueue.Dequeue();
+            //int col = CQueue.Dequeue();
+
+            if (Orders[row][col] == 'E')
+            {
+                Solved = true;
+                break;
+            }
+
+            GetNeighbors(row, col);
+
+            NodesLeftInLayer--;
+
+            if (NodesLeftInLayer == 0)
+            {
+                Console.WriteLine($"Move: {MovesCount}  List:{string.Join(',', RQueue.ToList())}");
+
+                NodesLeftInLayer = NodesInNextLayer;
+                NodesInNextLayer = 0;
+                MovesCount++;
+            }
+        }    
+
+        if (Solved)
+        {
+            Console.Write($"Moves to get E: {MovesCount}");
+        }
+    }
+
+    public static void GetNeighbors(int row, int col)
+    {
+        for (int x = 0; x < 4; x++)
+        {
+            int rrow = row + DeltaRow[x];
+            int ccol = col + DeltaCol[x];
+
+            if (rrow < 0 || ccol < 0) continue;
+            if (rrow >= Rows || ccol >= Cols) continue;
+            if (Visited[rrow, ccol]) continue;
+            if (Orders[rrow][ccol] == 'S') continue;
+            if (Orders[rrow][ccol] == 'E' && Orders[row][col] != 'z') continue;
+            if (Orders[rrow][ccol] != 'E' && Orders[row][col] != 'S' && Orders[rrow][ccol] > Orders[row][col] + 1) continue;
+            
+            RQueue.Enqueue((rrow, ccol));
+            //CQueue.Enqueue(ccol);
+            Visited[rrow, ccol] = true;
+            NodesInNextLayer++;
+        }
+    }
+}
+
+
+/************************************************************************************************************/
+
+Day12.Solve();
+
+
+public class Day12
+{
+    public record Height(char C)
+    {
+        public bool Visited { get; set; } = false;
+    }
+
+    public record Point(int X, int Y)
+    {
+        public Point? Last { get; set; } = null;
+        public Point Up => new(X, Y - 1);
+        public Point Down => new(X, Y + 1);
+        public Point Left => new(X - 1, Y);
+        public Point Right => new(X + 1, Y);
+        public IEnumerable<Point> Seen()
+        {
+            var p = this;
+            while (p != null)
+            {
+                yield return p;
+                p = p.Last;
+            }
+        }
+    };
+
+    public static void Solve()
+    {
+        var heightMap = File.ReadLines(@"..\..\..\data.txt").ToList().Select(l => l.Select(x => new Height(x)).ToArray()).ToArray();
+        int width = heightMap.First().Length;
+        int height = heightMap.Length;
+        bool Traversable(Point from, Point to)
+        {
+            if (to.X < 0 || to.X >= width || to.Y < 0 || to.Y >= height || heightMap[from.Y][from.X].Visited) return false;
+            var f = heightMap[from.Y][from.X].C;
+            var t = heightMap[to.Y][to.X].C;
+            if (f == 'S') f = 'a';
+            if (t == 'E') t = 'z';
+            return (f - t >= -1);
+        }
+        Point FindEnd(Point Start)
+        {
+            Queue<Point> queue = new();
+            queue.Enqueue(Start);
+            while (queue.Any())
+            {
+                var p = queue.Dequeue();
+                if (heightMap[p.Y][p.X].C == 'E') return p;
+                new[] { p.Up, p.Down, p.Left, p.Right }.Where(n => Traversable(p, n)).ToList().ForEach(n =>
+                {
+                    n.Last = p;
+                    queue.Enqueue(n);
+                });
+                heightMap[p.Y][p.X].Visited = true;
+            }
+            return null; // no way!
+        }
+        void Reset(Height[][] heights)
+        {
+            for (int y = 0; y < height; y++) for (int x = 0; x < width; x++) heights[y][x].Visited = false;
+        }
+
+        var S = heightMap.ToArray().SelectMany((l, y) => l.Select((h, x) => new Point(h.C == 'S' ? x : -1, y))).First(p => p.X > -1);
+        var path = FindEnd(S);
+        var route = path.Seen().ToList();
+        Console.WriteLine($"Part 1: {route.Count() - 1}");
+
+        var lengths = new List<int>();
+        var startingPoints = heightMap.ToArray().SelectMany((l, y) => l.Select((h, x) => new Point(h.C == 'S' || h.C == 'a' ? x : -1, y))).Where(p => p.X > -1).ToList();
+        foreach (var point in startingPoints)
+        {
+            Reset(heightMap);
+            var maybePath = FindEnd(point);
+            if (maybePath is not null)
+            {
+                lengths.Add(maybePath.Seen().Count() - 1);
+            }
+        }
+        Console.WriteLine($"Part 2: {lengths.Min()}");
+    }
+}
